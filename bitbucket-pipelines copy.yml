@@ -1,0 +1,43 @@
+# This is an example Starter pipeline configuration
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+
+image: ubuntu:latest
+
+pipelines:
+  default:
+    - parallel:
+      - step:
+          name: 'P1'
+          script:
+            - echo "P1"
+          after-script:
+            - echo "After"
+      - step:
+          name: 'P2'
+          script:
+            - echo "P2"
+      - step:
+          name: 'P3'
+          script:
+            - echo "P3"
+    - step:
+        name: 'Build and Test'
+        script:
+          - echo "Your build and test goes here..."
+          - env
+          - thor
+          - echo hi
+        after-script:
+          - echo "After"
+    - step:
+        name: 'Lint'
+        script:
+          - echo "Your linting goes here..."
+    - step:
+        name: 'Security scan'
+        script:
+          - echo "Your security scan goes here..."
+
+   

@@ -1,0 +1,39 @@
+definitions:
+  services:
+    docker:
+      memory: 4096
+  caches:
+    gradlewrapper: ~/.gradle/wrapper
+    sonar: ~/.sonar/
+  steps:
+    - step: &quality-check
+        name: Quality Check 
+        caches: 
+          - node
+        script:
+          - ls -al node_modules/ || true
+          - node index.js
+
+image: node
+pipelines:
+  custom:
+    quality:
+      - step: *quality-check
+  
+  default:
+    - step:
+        name: 'Build and Test'
+        caches:
+          - node
+          - gradlewrapper
+        script:
+          - echo "Your build and test goes here..."
+          - ls -la
+          - ls -al node_modules/ || true
+          - pwd
+          - npm i
+        after-script:
+          - ls -al node_modules/ || true
+
+    - step: *quality-check
+  

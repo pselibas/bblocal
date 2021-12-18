@@ -1,0 +1,47 @@
+definitions:
+  services:
+    docker:
+      memory: 4096
+  caches:
+    gradlewrapper: ~/.gradle/wrapper
+    sonar: ~/.sonar/
+  steps:
+    - step: &quality-check
+        name: Quality Check 
+        caches: 
+          - node
+        script:
+          - ls -al node_modules/ || true
+          - node index.js
+        artifacts:
+          - '**/*.js'
+
+image: node
+pipelines:
+  custom:
+    quality:
+      - step: *quality-check
+  
+  default:
+    - step:
+        name: 'Build and Test'
+        caches:
+          - node
+          - gradlewrapper
+        script:
+          - echo "Your build and test goes here..."
+          - echo Hello > newfile.txt
+        artifacts:
+          - 'newfile.txt'
+
+    - step:
+        name: 'Build and Test2'
+        caches:
+          - node
+          - gradlewrapper
+        script:
+          - echo "Your build and test goes here..."
+          - cat newfile.txt
+          - echo Bye > newfile.txt
+        artifacts:
+          - 'newfile.txt'
