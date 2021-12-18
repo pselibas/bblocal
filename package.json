@@ -5,14 +5,18 @@
   "main": "index.mjs",
   "scripts": {
     "run": "node index.mjs -s C:\\temp\\bb-test",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\""
   },
   "bin": {
     "bblocal": "./index.mjs"
   },
+  "homepage": "https://github.com/pselibas/bblocal",
   "keywords": [],
-  "author": "Paul Selibas",
-  "license": "ISC",
+  "author": "Paul Selibas <pselibas@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/pselibas/bblocal/issues"
+  },
+  "license": "MIT",
   "dependencies": {
     "commander": "^8.3.0",
     "dockerode": "^3.3.1",
