@@ -5,7 +5,8 @@
   "main": "index.mjs",
   "scripts": {
     "run": "node index.mjs -s C:\\temp\\bb-test -f test-files\\bitbucket-pipelines.yml",
-    "test": "echo \"Error: no test specified\""
+    "test": "echo \"Error: no test specified\"",
+    "changelog": "auto-changelog"
   },
   "bin": {
     "bblocal": "./index.mjs"
@@ -26,6 +27,7 @@
     "temp": "^0.9.4"
   },
   "devDependencies": {
+    "auto-changelog": "^2.3.0",
     "eslint": "^8.4.1"
   }
 }
