@@ -18,7 +18,8 @@ program
     .option("-p, --pipeline <pipeline>", "Specify which pipeline to execute", "default")
     .option("-s, --source <source folder>", "Specify the source folder", "./")
     .option("-a, --artifacts <target artifact tar>", "Location of artifacts tar file", "./.bblocal/artifacts.tar")
-    .option("-c, --cache <cache folder>", "Folder to store cache for this build", "./.bblocal/cache");
+    .option("-c, --cache <cache folder>", "Folder to store cache for this build", "./.bblocal/cache")
+    .option("-e, --env <items>", "comma separated list of variables. (eg \"VAR1=val1,VAR2=val2\")", (v) => v.split(","), []);
 
 program.parse();
 const options = program.opts();
