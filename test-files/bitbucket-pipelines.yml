@@ -12,7 +12,7 @@ definitions:
           - node
         script:
           - ls -al node_modules/ || true
-          - node index.js
+          - env
         artifacts:
           - '**/*.js'
 
@@ -20,6 +20,10 @@ image: node
 pipelines:
   custom:
     quality:
+      - variables:
+        - name: Username
+        - name: Region
+          default: ap-southeast-2  # optionally provide a default value
       - step: *quality-check
   
   default:

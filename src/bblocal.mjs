@@ -7,9 +7,24 @@ import { mappings } from "./cache.mjs";
 import path from "path";
 import { Stream } from "stream";
 import micromatch from "micromatch";
+import * as readline from "readline";
+import process, { stderr } from "process";
 import { populateVariables } from "./variables.mjs";
 
 const docker = new Docker();
+
+async function ask(prompt) {
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    return new Promise((resolve) => {
+        rl.question(prompt, (input) => {
+            rl.close();
+            resolve(input);
+        });
+    });
+}
 
 async function pollForExitCode(exec) {
     return new Promise((resolve) => {
@@ -71,8 +86,7 @@ async function getCommandResponse(container, command) {
         ws.writable = false;
     };
 
-    // eslint-disable-next-line no-undef
-    container.modem.demuxStream(logStream, ws, process.stderr);
+    container.modem.demuxStream(logStream, ws, stderr);
     var exitCode = await pollForExitCode(exec);
     logStream.destroy();
     if (exitCode != 0) {
@@ -110,10 +124,10 @@ async function executeInstruction(container, instruction) {
     return Promise.resolve(exitCode);
 }
 
-async function executeStep(opts, gitConfig, pipelineFile, step) {
+async function executeStep(opts, gitConfig, pipelineFile, step, customVariables) {
     console.log(`[${step.name}]`);
 
-    let container = await buildContainer(opts, gitConfig, pipelineFile, step);
+    let container = await buildContainer(opts, gitConfig, pipelineFile, step, customVariables);
 
     async function compressArtifacts(step) {
         let artifactsGlobs = step.artifacts?.paths || step.artifacts;
@@ -213,7 +227,7 @@ async function executeStep(opts, gitConfig, pipelineFile, step) {
         return paths;
     }
 
-    // eslint-disable-next-line no-undef
+
     process.on("exit", cleanUpContainer);
 
     await container.start();
@@ -240,12 +254,11 @@ async function executeStep(opts, gitConfig, pipelineFile, step) {
         compressArtifacts(step);
         cleanUpContainer();
 
-        // eslint-disable-next-line no-undef
         process.removeListener("exit", cleanUpContainer);
     }
 }
 
-async function buildContainer(opts, gitConfig, pipelineFile, step) {
+async function buildContainer(opts, gitConfig, pipelineFile, step, customVariables) {
     var image = step.image || pipelineFile.image;
 
     //TODO: check if image exists
@@ -256,7 +269,7 @@ async function buildContainer(opts, gitConfig, pipelineFile, step) {
         Image: image,
         Cmd: ["tail", "-f", "/dev/null"],
         WorkingDir: "/opt/atlassian/pipelines/agent/build",
-        Env: populateVariables(gitConfig, step, opts),
+        Env: populateVariables(gitConfig, step, opts, customVariables),
         HostConfig: {
             Binds: [
                 `${gitConfig.destination}:/opt/atlassian/pipelines/agent/build/`
@@ -265,16 +278,33 @@ async function buildContainer(opts, gitConfig, pipelineFile, step) {
     });
 }
 
-async function processStep(opts, pipelineFile, gitConfig, step) {
+async function processStep(opts, pipelineFile, gitConfig, step, customVariables) {
     switch (true) {
         case (step.variables != undefined):
-            //TODO:
-            break;
+
+            // TODO: check for no prompt flag
+            // https://bitbucket.org/blog/introducing-default-values-for-custom-pipeline-variables
+            var answers = [];
+            for (let p of step.variables) {
+                var prompt = `Custom variable "${p.name}"`;
+                if (p.default) {
+                    prompt += ` (${p.default})`;
+                }
+                prompt += ": ";
+
+                var answer = await ask(prompt);
+                answers.push([
+                    p.name,
+                    p.default && !answer ? p.default : answer
+                ]);
+            }
+            return answers;
+
         case (step.parallel != undefined):
             var allSteps = step.parallel.map((i, index) => {
                 i.step.parallel_step = index;
                 i.step.parallel_step_count = step.parallel.length;
-                return executeStep(opts, gitConfig, pipelineFile, i.step);
+                return executeStep(opts, gitConfig, pipelineFile, i.step, customVariables);
             });
             var results = await Promise.all(allSteps);
             var stop = results.reduce((i, j) => i || j, false);
@@ -283,7 +313,7 @@ async function processStep(opts, pipelineFile, gitConfig, step) {
             }
             break;
         case (step.step != undefined):
-            stop = await executeStep(opts, gitConfig, pipelineFile, step.step);
+            stop = await executeStep(opts, gitConfig, pipelineFile, step.step, customVariables);
             if (stop) {
                 throw "Halting due to previous error";
             }
@@ -309,13 +339,15 @@ export async function start(opts) {
 
         rmSync(opts.artifacts, { force: true });
 
+        var customVariables = [];
         for (let step of pipeline) {
-            await processStep(opts, pipelineFile, gitConfig, step);
+            let returnedVariables = await processStep(opts, pipelineFile, gitConfig, step, customVariables);
+            if (returnedVariables)
+                customVariables = returnedVariables;
         }
 
     } catch (e) {
         console.log(e);
-        // eslint-disable-next-line no-undef
         process.exit(1);
     }
 }
