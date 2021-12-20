@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.mjs",
   "scripts": {
-    "run": "node index.mjs -s C:\\temp\\bb-test",
+    "run": "node index.mjs -s C:\\temp\\bb-test -f test-files\\bitbucket-pipelines.yml",
     "test": "echo \"Error: no test specified\""
   },
   "bin": {

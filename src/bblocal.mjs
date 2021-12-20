@@ -7,6 +7,7 @@ import { mappings } from "./cache.mjs";
 import path from "path";
 import { Stream } from "stream";
 import micromatch from "micromatch";
+import { populateVariables } from "./variables.mjs";
 
 const docker = new Docker();
 
@@ -112,7 +113,7 @@ async function executeInstruction(container, instruction) {
 async function executeStep(opts, gitConfig, pipelineFile, step) {
     console.log(`[${step.name}]`);
 
-    let container = await buildContainer(gitConfig, pipelineFile, step);
+    let container = await buildContainer(opts, gitConfig, pipelineFile, step);
 
     async function compressArtifacts(step) {
         let artifactsGlobs = step.artifacts?.paths || step.artifacts;
@@ -244,27 +245,18 @@ async function executeStep(opts, gitConfig, pipelineFile, step) {
     }
 }
 
-async function buildContainer(gitConfig, pipelineFile, step) {
+async function buildContainer(opts, gitConfig, pipelineFile, step) {
     var image = step.image || pipelineFile.image;
 
     //TODO: check if image exists
     console.log("Pulling image", image);
     await pull(image);
 
-    //TODO: Add artifacts
-
     return docker.createContainer({
         Image: image,
         Cmd: ["tail", "-f", "/dev/null"],
         WorkingDir: "/opt/atlassian/pipelines/agent/build",
-        Env: [
-            "CI=true",
-            `BITBUCKET_COMMIT=${gitConfig.commitHash}`,
-            "BITBUCKET_CLONE_DIR=/opt/atlassian/pipelines/agent/build",
-            `BITBUCKET_BRANCH=${gitConfig.branchName}`,
-            "BITBUCKET_BUILD_NUMBER=1",
-            "BUILD_DIR=/opt/atlassian/pipelines/agent/build"
-        ],
+        Env: populateVariables(gitConfig, step, opts),
         HostConfig: {
             Binds: [
                 `${gitConfig.destination}:/opt/atlassian/pipelines/agent/build/`
@@ -279,7 +271,9 @@ async function processStep(opts, pipelineFile, gitConfig, step) {
             //TODO:
             break;
         case (step.parallel != undefined):
-            var allSteps = step.parallel.map((i) => {
+            var allSteps = step.parallel.map((i, index) => {
+                i.step.parallel_step = index;
+                i.step.parallel_step_count = step.parallel.length;
                 return executeStep(opts, gitConfig, pipelineFile, i.step);
             });
             var results = await Promise.all(allSteps);

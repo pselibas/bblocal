@@ -43,5 +43,23 @@ pipelines:
           - echo "Your build and test goes here..."
           - cat newfile.txt
           - echo Bye > newfile.txt
+          - echo $TEST_VAR
         artifacts:
           - 'newfile.txt'
+
+    - parallel:
+      - step:
+          name: 'P1'
+          script:
+            - env
+            - echo "P1"
+      - step:
+          name: 'P2'
+          script:
+            - env
+            - echo "P2"
+      - step:
+          name: 'P3'
+          script:
+            - env
+            - echo "P3"
