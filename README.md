@@ -33,6 +33,7 @@ $ npm install -g bblocal
     -s, --source <source folder>           Specify the source folder (default: "./")
     -a, --artifacts <target artifact tar>  Location of artifacts tar file (default: "./.bblocal/artifacts.tar")
     -c, --cache <cache folder>             Folder to store cache for this build (default: "./.bblocal/cache")
+    -k, --keys <.ssh folder>               Mount your local ssh folder. !!WARNING!! only do this with trusted docker images.
     -e, --env <items>                      comma separated list of variables. (eg "VAR1=val1,VAR2=val2") (default: [])
     -h, --help                             display help for command
 
