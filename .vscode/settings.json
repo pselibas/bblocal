@@ -4,6 +4,7 @@
         "demux",
         "dockerode",
         "dotnetcore",
-        "nodegit"
+        "nodegit",
+        "revparse"
     ]
 }
