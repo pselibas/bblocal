@@ -10,6 +10,7 @@ import micromatch from "micromatch";
 import * as readline from "readline";
 import process, { stderr } from "process";
 import { populateVariables } from "./variables.mjs";
+import tar from "tar";
 
 const docker = new Docker();
 
@@ -227,12 +228,31 @@ async function executeStep(opts, gitConfig, pipelineFile, step, customVariables)
         return paths;
     }
 
-
     process.on("exit", cleanUpContainer);
 
     await container.start();
 
     let cachePaths = await getCachePaths();
+
+    if (opts.keys) {
+        console.log(`[${step.name}] Copying local ssh folder from %s into container`, opts.keys);
+        const tarStream = tar.c(
+            {
+                gzip: true,
+                sync: true,
+                cwd: opts.keys
+            },
+            ["."]
+        );
+        await runMultipleSteps(["mkdir /tmp/.ssh/"]);
+        await container.putArchive(tarStream.read(), { path: "/tmp/.ssh/" });
+        await runMultipleSteps([
+            "cp -R /tmp/.ssh ~/.ssh",
+            "chmod 700 ~/.ssh",
+            "chmod 644 ~/.ssh/id_rsa.pub",
+            "chmod 600 ~/.ssh/id_rsa"
+        ]);
+    }
 
     for (let i of cachePaths) {
         await putArchive(`${opts.cache}/${i.name}.tar`, i.destinationPath);

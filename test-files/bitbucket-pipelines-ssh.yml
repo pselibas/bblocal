@@ -1,0 +1,11 @@
+image: ubuntu:latest
+
+pipelines:
+  default:
+    - step:
+        name: 'Build and Test'
+        script:
+          - echo "Your build and test goes here..."
+          - env
+          - ls -la /tmp/
+          - ls -la ~/.ssh/
