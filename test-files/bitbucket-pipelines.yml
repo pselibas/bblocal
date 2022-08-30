@@ -26,7 +26,7 @@ pipelines:
           default: ap-southeast-2  # optionally provide a default value
       - step: *quality-check
   
-  default:
+  default1:
     - step:
         name: 'Build and Test'
         caches:

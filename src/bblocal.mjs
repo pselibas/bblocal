@@ -11,6 +11,7 @@ import * as readline from "readline";
 import process, { stderr } from "process";
 import { populateVariables } from "./variables.mjs";
 import tar from "tar";
+import fs from "fs";
 
 const docker = new Docker();
 
@@ -48,7 +49,7 @@ async function pull(image) {
         .then((stream) => {
             docker.modem.followProgress(stream, onFinished, onProgress);
 
-            function onFinished(err, output) {
+            function onFinished(_err, output) {
                 console.log(output);
             }
 
@@ -91,7 +92,7 @@ async function getCommandResponse(container, command) {
     var exitCode = await pollForExitCode(exec);
     logStream.destroy();
     if (exitCode != 0) {
-        throw `Failed to execute command '${command}'`;
+        throw new Error(`Failed to execute command '${command}'`);
     }
 
     return Promise.resolve(responseString.trim());
@@ -144,12 +145,12 @@ async function executeStep(opts, gitConfig, pipelineFile, step, customVariables)
 
         var exitCode = await executeInstruction(container, command);
         if (exitCode != 0) {
-            throw "Unable to export artifact list";
+            throw new Error("Unable to export artifact list");
         }
 
         exitCode = await executeInstruction(container, "tar -cf /tmp/artifacts.tar -T /tmp/artifacts.txt");
         if (exitCode != 0) {
-            throw "Unable to tar artifacts";
+            throw new Error("Unable to tar artifacts");
         }
 
         await saveArchive(opts.artifacts, "/tmp/artifacts.tar");
@@ -329,13 +330,13 @@ async function processStep(opts, pipelineFile, gitConfig, step, customVariables)
             var results = await Promise.all(allSteps);
             var stop = results.reduce((i, j) => i || j, false);
             if (stop) {
-                throw "Halting due to previous error";
+                throw new Error("Halting due to previous error");
             }
             break;
         case (step.step != undefined):
             stop = await executeStep(opts, gitConfig, pipelineFile, step.step, customVariables);
             if (stop) {
-                throw "Halting due to previous error";
+                throw new Error("Halting due to previous error");
             }
             break;
         default:
@@ -344,6 +345,11 @@ async function processStep(opts, pipelineFile, gitConfig, step, customVariables)
 }
 
 export async function start(opts) {
+    if (!fs.existsSync(opts.source)) {
+        console.error(`Source dir '${opts.source}' does not exist`);
+        process.exit(-1);
+    }
+
     let gitConfig = await clone(opts.source);
     try {
         console.log("Creating cache folder %s", opts.cache);
@@ -355,7 +361,24 @@ export async function start(opts) {
             .reduce((i, j) => {
                 return i ? i[j] : null;
             }, pipelineFile.pipelines);
-        assert(pipeline, "No such pipeline in your pipeline file");
+
+        if (!pipeline) {
+            console.error(`Error: Pipeline '${opts.pipeline}' does not exist in your pipeline file.`);
+            console.error("The following are available pipelines:");
+
+            let pipelinesStrings = Object.keys(pipelineFile.pipelines).map(i => {
+                if (pipelineFile.pipelines[i] instanceof Array) {
+                    return i;
+                } else {
+                    return Object.keys(pipelineFile.pipelines[i]).map(j => {
+                        return `${i}:${j}`;
+                    });
+                }
+
+            }).flat().join("\n\t- ");
+            console.error("\t- " + pipelinesStrings);
+            process.exit(-1);
+        }
 
         rmSync(opts.artifacts, { force: true });
 
